@@ -24,7 +24,7 @@ Add the package to your ``INSTALLED_APPS``:
         "translated_fields",
     ]
 
-django-translated-fields supports all versions of Django from 3.2 to 5.2. If in
+django-translated-fields supports all versions of Django from 3.2 to 6.0. If in
 doubt, check the test runs in the GitHub actions environment.
 
 
