@@ -5,6 +5,7 @@ Next version
 ~~~~~~~~~~~~
 
 - Added Python 3.13, Django 5.2a1 to the CI matrix.
+- Added Python 3.14, Django 6.0 to the CI matrix.
 - Dropped Python 3.8 compatibility.
 
 
