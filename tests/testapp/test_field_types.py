@@ -209,19 +209,15 @@ def test_form_fields_generation():
     form_class = modelform_factory(FieldTypesModel, fields="__all__")
     form = form_class()
 
-    # Check field types
-    assert form.fields["char_field_en"].choices == [
-        ("", "---------"),
-        ("a", "Option A"),
-        ("b", "Option B"),
-        ("c", "Option C"),
-    ]
-    assert form.fields["char_field_de"].choices == [
-        ("", "---------"),
-        ("a", "Option A"),
-        ("b", "Option B"),
-        ("c", "Option C"),
-    ]
+    # Check field types (blank label may vary across Django versions)
+    for name in ("char_field_en", "char_field_de"):
+        choices = list(form.fields[name].choices)
+        assert choices[0][0] == ""
+        assert choices[1:] == [
+            ("a", "Option A"),
+            ("b", "Option B"),
+            ("c", "Option C"),
+        ]
 
     # Check help texts
     assert form.fields["text_field_en"].help_text == "This is a text field"
