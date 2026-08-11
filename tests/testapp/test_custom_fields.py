@@ -26,8 +26,8 @@ def test_custom_field_choices_actual_behavior():
     assert custom_de.choices == actual_choices
 
     # Get the deconstruct() values to confirm this behavior
-    name_en, path_en, args_en, kwargs_en = custom_en.deconstruct()
-    name_de, path_de, args_de, kwargs_de = custom_de.deconstruct()
+    _name_en, _path_en, _args_en, kwargs_en = custom_en.deconstruct()
+    _name_de, _path_de, _args_de, kwargs_de = custom_de.deconstruct()
 
     # Confirm that deconstruct() returns the same hardcoded choices
     assert kwargs_en["choices"] == actual_choices
@@ -158,8 +158,8 @@ def test_custom_path_field_type_preserved():
     assert isinstance(custom_de, CustomPathTextField)
 
     # Get the deconstruct values
-    name_en, path_en, args_en, kwargs_en = custom_en.deconstruct()
-    name_de, path_de, args_de, kwargs_de = custom_de.deconstruct()
+    _name_en, path_en, _args_en, _kwargs_en = custom_en.deconstruct()
+    _name_de, path_de, _args_de, _kwargs_de = custom_de.deconstruct()
 
     # Confirm that deconstruct returns the base TextField path
     assert path_en == "django.db.models.TextField"

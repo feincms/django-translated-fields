@@ -6,8 +6,8 @@ from translated_fields.fields import TranslatedField, to_attribute
 
 __all__ = [
     "TranslatedFieldWithFallback",
-    "fallback_to_default",
     "fallback_to_any",
+    "fallback_to_default",
     "language_code_formfield_callback",
 ]
 

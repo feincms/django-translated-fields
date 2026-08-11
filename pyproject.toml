@@ -96,8 +96,10 @@ lint.extend-select = [
 lint.extend-ignore = [
   # Allow zip() without strict=
   "B905",
+  "DTZ011",
   # No line length errors
   "E501",
+  "RUF012",
 ]
 lint.per-file-ignores."*/migrat*/*" = [
   # Allow using PascalCase model names in migrations

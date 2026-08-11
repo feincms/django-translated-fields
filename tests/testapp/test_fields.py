@@ -77,9 +77,8 @@ def test_translated_fields():
         assert m.name == m.name_en
     with override("de"):
         assert m.name == m.name_de
-    with override("bla"):
-        with pytest.raises(AttributeError):
-            _ = m.name
+    with override("bla"), pytest.raises(AttributeError):
+        _ = m.name
 
 
 @pytest.mark.django_db
@@ -91,9 +90,8 @@ def test_translated_attributes():
         assert m.stuff == m.stuff_en
     with override("de"):
         assert m.stuff == m.stuff_de
-    with override("bla"):
-        with pytest.raises(AttributeError):
-            _ = m.stuff
+    with override("bla"), pytest.raises(AttributeError):
+        _ = m.stuff
 
 
 @pytest.mark.django_db
