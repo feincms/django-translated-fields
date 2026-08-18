@@ -21,10 +21,13 @@ from testapp.models import (
 from translated_fields import language_code_formfield_callback
 
 
-# pytest_django.asserts unconditionally requires a recent Django; go straight to
-# Django's own assertion instead.
-def assert_in_html(needle, haystack):
-    SimpleTestCase("run").assertInHTML(needle, haystack)
+if django.VERSION >= (5, 0):
+    from pytest_django.asserts import assertInHTML
+else:
+    # pytest-django 4.14 unconditionally imports django.contrib.messages.test,
+    # which only exists since Django 5.0. Use Django's own assertion instead.
+    def assertInHTML(needle, haystack):  # noqa: N802
+        SimpleTestCase("run").assertInHTML(needle, haystack)
 
 
 @pytest.fixture
@@ -156,7 +159,7 @@ def test_admin(login):
         if django.VERSION < (5, 1)
         else '<label>Other field [en]:</label><div class="readonly">-</div>'
     )
-    assert_in_html(expected_content, response.content.decode())
+    assertInHTML(expected_content, response.content.decode())
 
     response = client.post(
         "/admin/testapp/testmodel/add/", {"name_en": "Test", "name_de": "Test"}
