@@ -7,9 +7,8 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.forms import modelform_factory
-from django.test import Client
+from django.test import Client, SimpleTestCase
 from django.utils.translation import override
-from pytest_django.asserts import assertInHTML
 
 from testapp.models import (
     CustomLanguagesModel,
@@ -20,6 +19,12 @@ from testapp.models import (
     TestModel,
 )
 from translated_fields import language_code_formfield_callback
+
+
+# pytest_django.asserts unconditionally requires a recent Django; go straight to
+# Django's own assertion instead.
+def assert_in_html(needle, haystack):
+    SimpleTestCase("run").assertInHTML(needle, haystack)
 
 
 @pytest.fixture
@@ -151,7 +156,7 @@ def test_admin(login):
         if django.VERSION < (5, 1)
         else '<label>Other field [en]:</label><div class="readonly">-</div>'
     )
-    assertInHTML(expected_content, response.content.decode())
+    assert_in_html(expected_content, response.content.decode())
 
     response = client.post(
         "/admin/testapp/testmodel/add/", {"name_en": "Test", "name_de": "Test"}
