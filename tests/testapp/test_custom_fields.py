@@ -6,121 +6,125 @@ from testapp.custom_fields import CustomPathTextField
 from testapp.field_types_models import CustomFieldModel
 
 
-@pytest.mark.django_db
-def test_custom_field_choices_actual_behavior():
-    """
-    Test to demonstrate the current behavior with custom field deconstruct.
-
-    This test confirms what actually happens (not what we want to happen).
-    """
-    # Get the runtime field instances
-    custom_en = CustomFieldModel._meta.get_field("custom_choices_en")
-    custom_de = CustomFieldModel._meta.get_field("custom_choices_de")
-
-    # The actual current behavior - choices are taken from deconstruct() [("", "")]
-    # rather than the original [("a", "Option A"), ("b", "Option B"), ("c", "Option C")]
-    actual_choices = [("", "")]
-
-    # These assertions show what actually happens (would pass)
-    assert custom_en.choices == actual_choices
-    assert custom_de.choices == actual_choices
-
-    # Get the deconstruct() values to confirm this behavior
-    _name_en, _path_en, _args_en, kwargs_en = custom_en.deconstruct()
-    _name_de, _path_de, _args_de, kwargs_de = custom_de.deconstruct()
-
-    # Confirm that deconstruct() returns the same hardcoded choices
-    assert kwargs_en["choices"] == actual_choices
-    assert kwargs_de["choices"] == actual_choices
-
-
-@pytest.mark.xfail(
-    reason="TranslatedField doesn't handle custom deconstruct correctly yet"
+DECONSTRUCT = pytest.mark.xfail(
+    reason="TranslatedField rebuilds fields from deconstruct(), losing runtime state"
 )
+
+CUSTOM_CHOICES = [("a", "Option A"), ("b", "Option B"), ("c", "Option C")]
+
+
+@pytest.mark.django_db
+def test_custom_field_deconstruct_hardcodes_choices():
+    """
+    Test that migrations keep seeing the placeholder choices.
+
+    That's the whole point of a field such as ChoicesCharField: changing the choices
+    shouldn't produce a migration. This has to keep holding whatever we do about the
+    DECONSTRUCT failures below -- preserving the runtime choices must not start
+    writing them into migrations.
+    """
+    for name in ("custom_choices_en", "custom_choices_de"):
+        *_rest, kwargs = CustomFieldModel._meta.get_field(name).deconstruct()
+        assert kwargs["choices"] == [("", "")]
+
+
+@DECONSTRUCT
 @pytest.mark.django_db
 def test_custom_field_choices_preserved():
     """
     Test that choices from custom fields with custom deconstruct methods are preserved.
 
-    This is currently an expected failure because TranslatedField doesn't properly
-    handle fields with custom deconstruct methods that modify field parameters.
+    ``TranslatedField.contribute_to_class`` builds the per-language fields from
+    ``self._field.deconstruct()``. Fields such as feincms3's ``ChoicesCharField``
+    deliberately report different kwargs from ``deconstruct()`` than they were
+    constructed with, so that changing the choices doesn't produce migrations. The
+    rebuild bakes those placeholder kwargs into the actual runtime fields.
 
-    The issue is in translated_fields/fields.py line 82:
-        _n, _p, args, kwargs = self._field.deconstruct()
-
-    When using a field with a custom deconstruct() method that modifies parameters like 'choices',
-    those modifications affect the translated fields that are created.
-
-    A possible fix would be to store the original parameters before deconstruct() is called,
-    or to copy the field's __dict__ attributes directly instead of using deconstruct().
+    A possible fix would be to copy the original field instead of reconstructing it,
+    but that has to keep working for the per-language ``specific`` overrides.
     """
-    # Get the runtime field instances
     custom_en = CustomFieldModel._meta.get_field("custom_choices_en")
     custom_de = CustomFieldModel._meta.get_field("custom_choices_de")
 
     # The runtime choices should be the ones we specified at field creation time,
-    # not the hardcoded ones from deconstruct()
-    expected_choices = [("a", "Option A"), ("b", "Option B"), ("c", "Option C")]
-
-    # Check the field choices match what we defined, not what deconstruct() returns
-    assert custom_en.choices == expected_choices
-    assert custom_de.choices == expected_choices
+    # not the placeholders from deconstruct()
+    assert custom_en.choices == CUSTOM_CHOICES
+    assert custom_de.choices == CUSTOM_CHOICES
 
 
-@pytest.mark.xfail(
-    reason="TranslatedField doesn't handle custom deconstruct correctly yet"
-)
+@DECONSTRUCT
 @pytest.mark.django_db
 def test_custom_field_form_generation():
     """
     Test that forms generated from custom fields have the correct choices.
 
-    This fails for the same reason as test_custom_field_choices_preserved:
-    the choices from the original field definition are not preserved when
-    deconstruct() replaces them with hardcoded values.
+    Fails for the same reason as test_custom_field_choices_preserved.
     """
     form_class = modelform_factory(CustomFieldModel, fields="__all__")
     form = form_class()
 
-    # Form field choices should include the default empty choice plus our defined choices
-    expected_form_choices = [
-        ("", "---------"),
-        ("a", "Option A"),
-        ("b", "Option B"),
-        ("c", "Option C"),
-    ]
-
-    # Check that form fields have the expected choices
-    assert form.fields["custom_choices_en"].choices == expected_form_choices
-    assert form.fields["custom_choices_de"].choices == expected_form_choices
+    for name in ("custom_choices_en", "custom_choices_de"):
+        # Skip the blank choice; whether Django adds one and how it labels it
+        # differs between versions and isn't what we're testing here.
+        choices = [choice for choice in form.fields[name].choices if choice[0]]
+        assert choices == CUSTOM_CHOICES
 
 
-@pytest.mark.xfail(
-    reason="TranslatedField doesn't handle custom deconstruct correctly yet"
-)
+@DECONSTRUCT
 @pytest.mark.django_db
-def test_custom_field_model_usage():
+def test_custom_field_display():
     """
-    Test using the custom field with a model instance.
+    Test that get_FOO_<language>_display() uses the choices we defined.
 
-    This fails because the get_FOO_display() method relies on the correct choices
-    being set on the field. Since the choices are replaced with [("", "")] during
-    field creation, the display values don't match what we expect.
+    Fails for the same reason as test_custom_field_choices_preserved: since the
+    choices are replaced with the placeholders during field creation, Django's
+    display helper doesn't find the values and returns them unchanged.
     """
-    # Create a model instance with values for the custom field
     model = CustomFieldModel.objects.create(
         custom_choices_en="a",
         custom_choices_de="b",
     )
 
-    # Check that the values are correctly stored and the choices behavior works
+    assert model.get_custom_choices_en_display() == "Option A"
+    assert model.get_custom_choices_de_display() == "Option B"
+
+
+@pytest.mark.xfail(reason="TranslatedField doesn't proxy get_FOO_display() yet")
+@pytest.mark.django_db
+def test_translated_field_display():
+    """
+    Test that get_FOO_display() follows the active language.
+
+    Unrelated to the deconstruct() issue above: Django only adds the helper for the
+    per-language fields it knows about, so only get_custom_choices_en_display() and
+    get_custom_choices_de_display() exist. TranslatedField doesn't add a descriptor
+    proxying the helper for the active language.
+    """
+    model = CustomFieldModel.objects.create(
+        custom_choices_en="a",
+        custom_choices_de="b",
+    )
+
     with override("en"):
-        assert model.custom_choices == "a"
         assert model.get_custom_choices_display() == "Option A"
 
     with override("de"):
-        assert model.custom_choices == "b"
         assert model.get_custom_choices_display() == "Option B"
+
+
+@pytest.mark.django_db
+def test_custom_field_model_usage():
+    """Test that the translated descriptor follows the active language."""
+    model = CustomFieldModel.objects.create(
+        custom_choices_en="a",
+        custom_choices_de="b",
+    )
+
+    with override("en"):
+        assert model.custom_choices == "a"
+
+    with override("de"):
+        assert model.custom_choices == "b"
 
 
 @pytest.mark.parametrize("option", ["a", "b", "c"])
