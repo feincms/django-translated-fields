@@ -322,3 +322,14 @@ def test_formfield_callback():
         result = str(Form())
         assert "Anderes Feld [en]:" in result
         assert "Anderes Feld [de]:" in result
+
+
+@pytest.mark.django_db
+def test_setter_without_active_language():
+    m = TestModel()
+    with override(None):
+        m.name = "default"
+        assert m.name == "default"
+    assert m.name_en == "default"
+    assert not hasattr(m, "name_None")
+    assert not hasattr(m, "name_none")

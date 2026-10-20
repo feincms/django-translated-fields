@@ -50,7 +50,9 @@ def translated_attrgetter(name, field):
 
 
 def translated_attrsetter(name, field):
-    return lambda self, value: setattr(self, to_attribute(name), value)
+    return lambda self, value: setattr(
+        self, to_attribute(name, get_language() or field.languages[0]), value
+    )
 
 
 def translated_attributes(*names, attrgetter=translated_attrgetter):
