@@ -6,6 +6,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from django.db import models
 from django.forms import modelform_factory
 from django.test import Client, SimpleTestCase
 from django.utils.translation import override
@@ -18,7 +19,10 @@ from testapp.models import (
     SpecificModel,
     TestModel,
 )
-from translated_fields import language_code_formfield_callback
+from translated_fields import (
+    TranslatedFieldWithFallback,
+    language_code_formfield_callback,
+)
 from translated_fields.fields import _show_language_code, show_language_code
 
 
@@ -340,3 +344,9 @@ def test_show_language_code_reset_on_exception():
     with pytest.raises(ZeroDivisionError), show_language_code(True):  # noqa: FBT003
         1 / 0  # noqa: B018
     assert _show_language_code.get(False) is False
+
+
+def test_fallback_does_not_mutate_specific():
+    specific = {"de": {"verbose_name": "Name"}}
+    TranslatedFieldWithFallback(models.CharField(max_length=20), specific)
+    assert specific == {"de": {"verbose_name": "Name"}}

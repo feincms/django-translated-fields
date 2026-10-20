@@ -73,7 +73,9 @@ class TranslatedField:
         self, field, specific=None, *, languages=None, attrgetter=None, attrsetter=None
     ):
         self._field = field
-        self._specific = specific or {}
+        self._specific = {
+            language: dict(kwargs) for language, kwargs in (specific or {}).items()
+        }
         self._attrgetter = attrgetter or translated_attrgetter
         self._attrsetter = attrsetter or translated_attrsetter
         self.languages = list(languages or (lang[0] for lang in settings.LANGUAGES))
