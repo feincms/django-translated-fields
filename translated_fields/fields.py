@@ -25,8 +25,10 @@ _show_language_code = contextvars.ContextVar("show_language_code")
 @contextmanager
 def show_language_code(show):
     token = _show_language_code.set(show)
-    yield
-    _show_language_code.reset(token)
+    try:
+        yield
+    finally:
+        _show_language_code.reset(token)
 
 
 def _verbose_name_maybe_language_code(verbose_name, language_code):

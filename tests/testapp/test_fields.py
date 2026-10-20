@@ -19,6 +19,7 @@ from testapp.models import (
     TestModel,
 )
 from translated_fields import language_code_formfield_callback
+from translated_fields.fields import _show_language_code, show_language_code
 
 
 if django.VERSION >= (5, 0):
@@ -333,3 +334,9 @@ def test_setter_without_active_language():
     assert m.name_en == "default"
     assert not hasattr(m, "name_None")
     assert not hasattr(m, "name_none")
+
+
+def test_show_language_code_reset_on_exception():
+    with pytest.raises(ZeroDivisionError), show_language_code(True):  # noqa: FBT003
+        1 / 0  # noqa: B018
+    assert _show_language_code.get(False) is False
