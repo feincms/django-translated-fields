@@ -8,5 +8,8 @@
 
 ## Commits
 
+Commit feature by feature. Keep commit messages minimal and don't repeat
+what's visible in the diff itself.
+
 Don't add attribution (no `Co-Authored-By` lines or "Generated with" footers)
 to commit messages or pull request descriptions.
