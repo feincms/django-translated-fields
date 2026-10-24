@@ -1,4 +1,4 @@
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 
 from importlib.util import find_spec
 

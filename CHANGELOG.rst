@@ -4,6 +4,9 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+0.16 (2026-10-24)
+~~~~~~~~~~~~~~~~~
+
 - Changed ``TranslatedField`` to copy the passed field for each language
   instead of reconstructing it from ``deconstruct()``. Fields which don't
   return all of their arguments from ``deconstruct()`` (e.g. feincms3's
