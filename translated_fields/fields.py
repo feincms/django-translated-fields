@@ -1,4 +1,5 @@
 import contextvars
+import copy
 import re
 from contextlib import contextmanager
 
@@ -57,6 +58,34 @@ def translated_attrsetter(name, field):
     )
 
 
+def _copy_field(field, specific):
+    """
+    Return a copy of ``field`` with the ``specific`` keyword arguments applied
+
+    Copying instead of reconstructing the field from ``deconstruct()`` keeps
+    state which isn't (or deliberately isn't) part of the deconstructed
+    keyword arguments, e.g. configuration which shouldn't end up in migrations.
+
+    There's no general way to apply keyword arguments to an existing field.
+    Instead, the field is reconstructed twice, with and without ``specific``,
+    and the attributes which differ are transferred to the copy.
+    """
+    new = copy.deepcopy(field)
+    if not specific:
+        return new
+
+    _n, _p, args, kwargs = field.deconstruct()
+    base = vars(field.__class__(*args, **kwargs))
+    changed = field.__class__(*args, **(kwargs | specific))
+    missing = object()
+    for attr, value in vars(changed).items():
+        if attr != "creation_counter" and base.get(attr, missing) != value:
+            setattr(new, attr, value)
+    if getattr(new.remote_field, "field", None) is changed:
+        new.remote_field.field = new
+    return new
+
+
 def translated_attributes(*names, attrgetter=translated_attrgetter):
     field = TranslatedField(None)  # Allow accessing field.languages etc. in the getter
 
@@ -85,16 +114,17 @@ class TranslatedField:
         Field.creation_counter += len(self.languages)
 
     def contribute_to_class(self, cls, name):
-        _n, _p, args, kwargs = self._field.deconstruct()
         fields = []
-        verbose_name = kwargs.pop("verbose_name", name)
+        verbose_name = self._field.verbose_name
+        if verbose_name is None:
+            verbose_name = name
         for index, language_code in enumerate(self.languages):
-            field_kw = dict(kwargs, **self._specific.get(language_code, {}))
-            field_kw.setdefault(
-                "verbose_name",
-                _verbose_name_maybe_language_code(verbose_name, language_code),
-            )
-            f = self._field.__class__(*args, **field_kw)
+            specific = self._specific.get(language_code, {})
+            f = _copy_field(self._field, specific)
+            if "verbose_name" not in specific:
+                f.verbose_name = _verbose_name_maybe_language_code(
+                    verbose_name, language_code
+                )
             f._translated_field_language_code = language_code
             f.creation_counter = self.creation_counter + index
             attr = to_attribute(name, language_code)

@@ -40,3 +40,16 @@ class CustomPathTextField(models.TextField):
         # This simulates a field with custom behavior that reports a base field type in migrations
         # TranslatedField preserves the original field class, but uses the path for migrations
         return name, "django.db.models.TextField", args, kwargs
+
+
+class ConfiguredTextField(models.TextField):
+    """
+    TextField with configuration which isn't returned by deconstruct().
+
+    Similar to django-prose-editor's ProseEditorField, the configuration only
+    affects the runtime behavior and shouldn't produce migrations when it changes.
+    """
+
+    def __init__(self, *args, **kwargs):
+        self.config = kwargs.pop("config", {})
+        super().__init__(*args, **kwargs)

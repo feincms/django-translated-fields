@@ -1,14 +1,12 @@
 import pytest
+from django.db import models
 from django.forms import CharField, modelform_factory
 from django.utils.translation import override
 
 from testapp.custom_fields import CustomPathTextField
-from testapp.field_types_models import CustomFieldModel
+from testapp.field_types_models import CustomFieldModel, RelatedModel
+from translated_fields.fields import _copy_field
 
-
-DECONSTRUCT = pytest.mark.xfail(
-    reason="TranslatedField rebuilds fields from deconstruct(), losing runtime state"
-)
 
 CUSTOM_CHOICES = [("a", "Option A"), ("b", "Option B"), ("c", "Option C")]
 
@@ -19,29 +17,24 @@ def test_custom_field_deconstruct_hardcodes_choices():
     Test that migrations keep seeing the placeholder choices.
 
     That's the whole point of a field such as ChoicesCharField: changing the choices
-    shouldn't produce a migration. This has to keep holding whatever we do about the
-    DECONSTRUCT failures below -- preserving the runtime choices must not start
-    writing them into migrations.
+    shouldn't produce a migration. Preserving the runtime choices (see below) must
+    not start writing them into migrations.
     """
     for name in ("custom_choices_en", "custom_choices_de"):
         *_rest, kwargs = CustomFieldModel._meta.get_field(name).deconstruct()
         assert kwargs["choices"] == [("", "")]
 
 
-@DECONSTRUCT
 @pytest.mark.django_db
 def test_custom_field_choices_preserved():
     """
     Test that choices from custom fields with custom deconstruct methods are preserved.
 
-    ``TranslatedField.contribute_to_class`` builds the per-language fields from
-    ``self._field.deconstruct()``. Fields such as feincms3's ``ChoicesCharField``
-    deliberately report different kwargs from ``deconstruct()`` than they were
-    constructed with, so that changing the choices doesn't produce migrations. The
-    rebuild bakes those placeholder kwargs into the actual runtime fields.
-
-    A possible fix would be to copy the original field instead of reconstructing it,
-    but that has to keep working for the per-language ``specific`` overrides.
+    Fields such as feincms3's ``ChoicesCharField`` deliberately report different
+    kwargs from ``deconstruct()`` than they were constructed with, so that changing
+    the choices doesn't produce migrations. ``TranslatedField`` used to rebuild the
+    per-language fields from ``deconstruct()``, baking those placeholder kwargs into
+    the actual runtime fields. It copies the original field now.
     """
     custom_en = CustomFieldModel._meta.get_field("custom_choices_en")
     custom_de = CustomFieldModel._meta.get_field("custom_choices_de")
@@ -52,13 +45,10 @@ def test_custom_field_choices_preserved():
     assert custom_de.choices == CUSTOM_CHOICES
 
 
-@DECONSTRUCT
 @pytest.mark.django_db
 def test_custom_field_form_generation():
     """
     Test that forms generated from custom fields have the correct choices.
-
-    Fails for the same reason as test_custom_field_choices_preserved.
     """
     form_class = modelform_factory(CustomFieldModel, fields="__all__")
     form = form_class()
@@ -70,15 +60,10 @@ def test_custom_field_form_generation():
         assert choices == CUSTOM_CHOICES
 
 
-@DECONSTRUCT
 @pytest.mark.django_db
 def test_custom_field_display():
     """
     Test that get_FOO_<language>_display() uses the choices we defined.
-
-    Fails for the same reason as test_custom_field_choices_preserved: since the
-    choices are replaced with the placeholders during field creation, Django's
-    display helper doesn't find the values and returns them unchanged.
     """
     model = CustomFieldModel.objects.create(
         custom_choices_en="a",
@@ -245,3 +230,40 @@ def test_custom_path_field_model_usage():
 
     with override("de"):
         assert model.custom_path_text == text_de
+
+
+def test_configured_field_preserves_config():
+    """
+    Test that state which deconstruct() doesn't return survives.
+
+    That's what django-prose-editor's ProseEditorField does with its configuration,
+    see https://github.com/feincms/django-prose-editor/issues/41
+    """
+    for name in ("configured_text_en", "configured_text_de"):
+        field = CustomFieldModel._meta.get_field(name)
+        assert field.config == {"extensions": ["Bold", "Italic"]}
+        assert "config" not in field.deconstruct()[3]
+
+
+def test_configured_field_specific():
+    """Test that specific overrides are applied to the copied field."""
+    field_en = CustomFieldModel._meta.get_field("configured_text_en")
+    field_de = CustomFieldModel._meta.get_field("configured_text_de")
+
+    assert not field_en.blank
+    assert field_de.blank
+    assert str(field_en.verbose_name) == "configured text field"
+    assert str(field_de.verbose_name) == "configured text field"
+
+
+def test_copy_field_specific_relation():
+    """Test that specific overrides of relationship fields point at the copy."""
+    field = models.ForeignKey(RelatedModel, on_delete=models.CASCADE)
+    copy = _copy_field(field, {"related_name": "+", "null": True})
+
+    assert copy.null
+    assert copy.remote_field.related_name == "+"
+    assert copy.remote_field.field is copy
+    assert not field.null
+    assert field.remote_field.related_name is None
+    assert field.remote_field.field is field

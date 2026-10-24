@@ -4,6 +4,12 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Changed ``TranslatedField`` to copy the passed field for each language
+  instead of reconstructing it from ``deconstruct()``. Fields which don't
+  return all of their arguments from ``deconstruct()`` (e.g. feincms3's
+  ``ChoicesCharField`` or django-prose-editor's ``ProseEditorField``) now keep
+  their runtime configuration.
+
 0.15 (2026-10-20)
 ~~~~~~~~~~~~~~~~~
 

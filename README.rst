@@ -158,19 +158,19 @@ The ``to_attribute`` helper can also be used when filtering, for example:
         q |= Q(**{field: s})
     questions = Question.objects.filter(q)
 
-.. important::
+.. note::
 
    **Fields with custom deconstruct() methods**
 
-   If you use fields with custom ``deconstruct()`` methods that modify field
-   parameters (such as ``ChoicesCharField`` from feincms3), be aware that
-   ``TranslatedField`` currently uses the output of ``deconstruct()`` to create
-   the translated fields. This means any parameter modifications in the field's
-   ``deconstruct()`` method will affect the translated fields.
+   ``TranslatedField`` copies the field you pass to it for each language, so
+   fields which deliberately omit or modify some of their arguments in
+   ``deconstruct()`` (such as ``ChoicesCharField`` from feincms3 or
+   ``ProseEditorField`` from django-prose-editor) keep their runtime
+   configuration while not generating migrations when it changes.
 
-   For example, if your custom field's ``deconstruct()`` method changes the
-   ``choices`` parameter, the translated fields will use those modified choices
-   rather than the original ones.
+   Per-language overrides (see below) are applied by constructing the field
+   from its ``deconstruct()`` output once with and once without the overrides
+   and transferring the attributes which differ to the copy.
 
 
 Changing field attributes per language
