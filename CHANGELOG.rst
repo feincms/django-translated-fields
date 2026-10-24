@@ -9,6 +9,7 @@ Next version
   return all of their arguments from ``deconstruct()`` (e.g. feincms3's
   ``ChoicesCharField`` or django-prose-editor's ``ProseEditorField``) now keep
   their runtime configuration.
+- Added Python 3.15 to the CI matrix.
 
 0.15 (2026-10-20)
 ~~~~~~~~~~~~~~~~~
