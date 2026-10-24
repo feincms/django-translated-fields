@@ -256,6 +256,17 @@ def test_configured_field_specific():
     assert str(field_de.verbose_name) == "configured text field"
 
 
+def test_partial_field_preserves_config():
+    """Test that configuration passed via functools.partial() survives."""
+    field_en = CustomFieldModel._meta.get_field("partial_text_en")
+    field_de = CustomFieldModel._meta.get_field("partial_text_de")
+
+    assert field_en.config == {"extensions": ["Bold"]}
+    assert field_de.config == {"extensions": ["Bold"]}
+    assert not field_en.blank
+    assert field_de.blank
+
+
 def test_copy_field_specific_relation():
     """Test that specific overrides of relationship fields point at the copy."""
     field = models.ForeignKey(RelatedModel, on_delete=models.CASCADE)

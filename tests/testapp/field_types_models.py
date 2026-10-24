@@ -1,3 +1,5 @@
+from functools import partial
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -7,6 +9,9 @@ from testapp.custom_fields import (
     CustomPathTextField,
 )
 from translated_fields import TranslatedField
+
+
+BoldTextField = partial(ConfiguredTextField, config={"extensions": ["Bold"]})
 
 
 class RelatedModel(models.Model):
@@ -130,6 +135,12 @@ class CustomFieldModel(models.Model):
             _("configured text field"),
             config={"extensions": ["Bold", "Italic"]},
         ),
+        {"de": {"blank": True}},
+    )
+
+    # Custom field with configuration passed via functools.partial()
+    partial_text = TranslatedField(
+        BoldTextField(_("partial text field")),
         {"de": {"blank": True}},
     )
 
