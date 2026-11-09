@@ -4,6 +4,8 @@ Change log
 Next version
 ~~~~~~~~~~~~
 
+- Dropped support for Python 3.9.
+
 0.16 (2026-10-24)
 ~~~~~~~~~~~~~~~~~
 
